@@ -717,6 +717,232 @@ curl -X POST http://localhost:3000/captains/register \
    { "errors": [{ "msg": "Capacity atleast 1" }] }
    ```
 
+### Captain Login
+
+**Endpoint:** `POST /captains/login`
+
+**Description:** Authenticate an existing captain and receive a JWT token for accessing protected routes.
+
+#### Request Body
+
+The request body must be in JSON format with the following structure:
+
+```json
+{
+  "email": "string",
+  "password": "string"
+}
+```
+
+#### Request Body Parameters
+
+| Parameter  | Type   | Required | Validation         | Description                        |
+| ---------- | ------ | -------- | ------------------ | ---------------------------------- |
+| `email`    | String | Yes      | Valid email format | Captain's registered email address |
+| `password` | String | Yes      | Min 6 characters   | Captain's password                 |
+
+#### Example Request
+
+```bash
+curl -X POST http://localhost:3000/captains/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.driver@example.com",
+    "password": "password123"
+  }'
+```
+
+#### Response Formats
+
+##### Success Response
+
+**Status Code:** `200 OK`
+
+**Example Response:**
+
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJfaWQiOiI2NTJhYjhjOWQxZTJmM2E0YjVjNmQ3ZTgiLCJpYXQiOjE2OTc0MDUwMDl9.xYz123ABC...",
+  "captain": {
+    "_id": "652ab8c9d1e2f3a4b5c6d7e8",
+    "fullname": {
+      "firstname": "John",
+      "lastname": "Smith"
+    },
+    "email": "john.driver@example.com",
+    "status": "inactive",
+    "vehicle": {
+      "color": "Black",
+      "plate": "ABC1234",
+      "capacity": 4,
+      "vehicleType": "car"
+    },
+    "location": {
+      "lat": null,
+      "lng": null
+    },
+    "__v": 0
+  }
+}
+```
+
+**Response Fields:**
+
+- `token`: JWT authentication token for accessing protected routes
+- `captain`: Complete captain object from the database (password excluded)
+- **Side Effect**: JWT token is also set as a cookie named `token`
+
+##### Validation Error Response
+
+**Status Code:** `400 Bad Request`
+
+**Example Response (Invalid email format):**
+
+```json
+{
+  "errors": [
+    {
+      "type": "field",
+      "value": "invalid-email",
+      "msg": "Invalid email",
+      "path": "email",
+      "location": "body"
+    }
+  ]
+}
+```
+
+**Example Response (Short password):**
+
+```json
+{
+  "errors": [
+    {
+      "type": "field",
+      "value": "123",
+      "msg": "password should be 6 char long",
+      "path": "password",
+      "location": "body"
+    }
+  ]
+}
+```
+
+##### Authentication Error Response
+
+**Status Code:** `401 Unauthorized`
+
+**Example Response (Captain not found or wrong password):**
+
+```json
+{
+  "message": "Invalid email or password"
+}
+```
+
+#### Status Codes
+
+| Status Code | Description                              | Example Scenario                       |
+| ----------- | ---------------------------------------- | -------------------------------------- |
+| `200`       | Success - Captain logged in successfully | Valid email and password combination   |
+| `400`       | Bad Request - Validation errors          | Invalid email format, short password   |
+| `401`       | Unauthorized - Invalid credentials       | Email not registered or wrong password |
+
+#### Common Error Scenarios
+
+1. **Invalid Email Format:**
+
+   ```json
+   { "errors": [{ "msg": "Invalid email" }] }
+   ```
+
+2. **Short Password:**
+
+   ```json
+   { "errors": [{ "msg": "password should be 6 char long" }] }
+   ```
+
+3. **Invalid Credentials:**
+   ```json
+   { "message": "Invalid email or password" }
+   ```
+
+### Captain Logout
+
+**Endpoint:** `GET /captains/logout`
+
+**Description:** Logout the current authenticated captain and invalidate their JWT token.
+
+**Authentication:** Required - JWT token must be provided
+
+#### Headers
+
+| Header        | Type   | Required | Description                        |
+| ------------- | ------ | -------- | ---------------------------------- |
+| Authorization | String | Yes      | Bearer token: `Bearer <jwt_token>` |
+
+**Alternative:** JWT token can also be sent via cookies as `token`
+
+#### Example Request
+
+```bash
+curl -X GET http://localhost:3000/captains/logout \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+```
+
+#### Response Formats
+
+##### Success Response
+
+**Status Code:** `200 OK`
+
+**Example Response:**
+
+```json
+{
+  "message": "Logout successfully"
+}
+```
+
+**Side Effects:**
+
+- JWT token is added to blacklist to prevent reuse
+- Cookie `token` is cleared (if using cookie authentication)
+
+##### Authentication Error Response
+
+**Status Code:** `401 Unauthorized`
+
+**Example Response (No token provided):**
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+**Example Response (Invalid/Expired token):**
+
+```json
+{
+  "message": "Unauthorized"
+}
+```
+
+#### Status Codes
+
+| Status Code | Description                          | Example Scenario                         |
+| ----------- | ------------------------------------ | ---------------------------------------- |
+| `200`       | Success - Captain logged out         | Valid JWT token provided and blacklisted |
+| `401`       | Unauthorized - Authentication failed | No token, invalid, or expired token      |
+
+#### Important Notes
+
+- After logout, the JWT token becomes invalid and cannot be used for future requests
+- The token is added to a blacklist to prevent reuse
+- If using cookie authentication, the cookie is automatically cleared
+- Captain must login again to access protected routes
+
 ---
 
 ## Data Models
