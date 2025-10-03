@@ -786,8 +786,6 @@ curl -X POST http://localhost:3000/captains/login \
 }
 ```
 
-**Response Fields:**
-
 - `token`: JWT authentication token for accessing protected routes
 - `captain`: Complete captain object from the database (password excluded)
 - **Side Effect**: JWT token is also set as a cookie named `token`
