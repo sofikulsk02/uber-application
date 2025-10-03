@@ -1,20 +1,51 @@
-import React, { useState } from "react";
-import { Link } from "react-router-dom";
-import uberLogo from "../../public/8aa4d1f60de468d00fdce0b58108857c.png";
+import React, { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import axios from "axios";
+import { UserDataContext } from "../context/UserContext.jsx";
+
 const UserSignup = () => {
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [newUser, setNewUser] = useState({});
-  const submitHandler = (e) => {
+
+  const navigate = useNavigate();
+  const { setUser } = useContext(UserDataContext);
+  const submitHandler = async (e) => {
     e.preventDefault();
-    setNewUser({
-      fullName: { firstName: firstName, lastName: lastName },
-      email,
-      password,
-    });
-    console.log(newUser);
+    const newUser = {
+      fullname: { firstname: firstName, lastname: lastName },
+      email: email,
+      password: password,
+    };
+
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/users/register`,
+        newUser
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        const data = response.data;
+        setUser(data.user);
+        localStorage.setItem("token", data.token);
+        navigate("/home");
+      }
+    } catch (error) {
+      console.error("Registration error:", error.response?.data);
+      if (error.response?.data?.errors) {
+        // Handle validation errors
+        error.response.data.errors.forEach((err) => {
+          alert(`${err.path}: ${err.msg}`);
+        });
+      } else if (error.response?.data?.message) {
+        alert(error.response.data.message);
+      } else {
+        alert("Registration failed. Please try again.");
+      }
+      return; // Don't clear form on error
+    }
+
     setFirstName("");
     setLastName("");
     setEmail("");
@@ -24,14 +55,17 @@ const UserSignup = () => {
     <div className="p-7 h-screen flex flex-col justify-between">
       <div>
         <img
-          src={uberLogo}
+          src="/8aa4d1f60de468d00fdce0b58108857c.png"
           className="w-16 object-contain mb-10"
           alt="Uber Logo"
           onError={(e) => {
             e.target.style.display = "none";
-            e.target.nextSibling.style.display = "block";
+            e.target.nextSibling.style.display = "flex";
           }}
         />
+        <div className="w-16 h-10 bg-black text-white text-xs font-bold items-center justify-center mb-10 hidden">
+          uber
+        </div>
         <form
           action=""
           onSubmit={(e) => {
@@ -81,7 +115,7 @@ const UserSignup = () => {
             className="rounded px-4 py-2 border w-full text-lg placeholder:text-base bg-[#eeeeee] mb-6"
           />
           <button className="rounded px-4 py-2 font-semibold w-full text-lg text-[#fff]  bg-[#111] mb-3">
-            Login
+            Create account
           </button>
         </form>
         <p className="text-center">

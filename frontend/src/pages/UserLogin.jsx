@@ -1,16 +1,49 @@
-import React, { useState } from "react";
-import uberLogo from "../../public/8aa4d1f60de468d00fdce0b58108857c.png";
-import { Link } from "react-router-dom";
+import React, { useState, useContext } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { UserDataContext } from "../context/UserContext";
+import axios from "axios";
+
 const UserLogin = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [userData, setUserData] = useState({});
-  const submitHandler = (e) => {
+
+  const { setUser } = useContext(UserDataContext);
+  const navigate = useNavigate();
+
+  const submitHandler = async (e) => {
     e.preventDefault();
-    setUserData({
+    const loginData = {
       email: email,
       password: password,
-    });
+    };
+
+    try {
+      const response = await axios.post(
+        `${import.meta.env.VITE_BASE_URL}/users/login`,
+        loginData
+      );
+
+      if (response.status === 200) {
+        const data = response.data;
+        setUser(data.user);
+        localStorage.setItem("token", data.token);
+        navigate("/home");
+      }
+    } catch (error) {
+      console.error("Login error:", error.response?.data);
+      if (error.response?.data?.errors) {
+        // Handle validation errors
+        error.response.data.errors.forEach((err) => {
+          alert(`${err.path}: ${err.msg}`);
+        });
+      } else if (error.response?.data?.message) {
+        alert(error.response.data.message);
+      } else {
+        alert("Login failed. Please check your credentials.");
+      }
+      return; // Don't clear form on error
+    }
+
     setEmail("");
     setPassword("");
   };
@@ -18,14 +51,17 @@ const UserLogin = () => {
     <div className="p-7 h-screen flex flex-col justify-between">
       <div>
         <img
-          src={uberLogo}
+          src="/8aa4d1f60de468d00fdce0b58108857c.png"
           className="w-16 object-contain mb-10"
           alt="Uber Logo"
           onError={(e) => {
             e.target.style.display = "none";
-            e.target.nextSibling.style.display = "block";
+            e.target.nextSibling.style.display = "flex";
           }}
         />
+        <div className="w-16 h-10 bg-black text-white text-xs font-bold items-center justify-center mb-10 hidden">
+          uber
+        </div>
         <form
           action=""
           onSubmit={(e) => {
