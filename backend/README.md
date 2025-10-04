@@ -1051,6 +1051,425 @@ The API includes comprehensive error handling:
 
 ---
 
+## Frontend Integration
+
+This backend API is integrated with a React.js frontend application. Below is the complete guide for frontend-backend integration.
+
+### Frontend Application Structure
+
+```
+frontend/
+├── src/
+│   ├── pages/
+│   │   ├── UserSignup.jsx       # User registration page
+│   │   ├── UserLogin.jsx        # User login page
+│   │   ├── CaptainSignup.jsx    # Captain registration page
+│   │   ├── CaptainLogin.jsx     # Captain login page
+│   │   ├── Home.jsx             # User dashboard
+│   │   ├── CaptainHome.jsx      # Captain dashboard
+│   │   ├── UserLogout.jsx       # User logout page
+│   │   └── Start.jsx            # Landing page
+│   ├── context/
+│   │   ├── UserContext.jsx      # User state management
+│   │   └── CaptainContext.jsx   # Captain state management
+│   ├── components/
+│   │   └── UserProtectedWrapper.jsx  # Route protection
+│   └── App.jsx                  # Main routing component
+├── public/
+└── .env                         # Environment variables
+```
+
+### Environment Configuration
+
+#### Backend (.env)
+
+```env
+PORT=3000
+JWT_SECRET=your_jwt_secret_here
+MONGODB_URI=mongodb://localhost:27017/uber-clone
+```
+
+#### Frontend (.env)
+
+```env
+VITE_BASE_URL=http://localhost:3000
+```
+
+### API Integration Examples
+
+#### 1. User Registration Integration
+
+**Frontend (UserSignup.jsx)**
+
+```javascript
+const submitHandler = async (e) => {
+  e.preventDefault();
+  const newUser = {
+    fullname: { firstname: firstName, lastname: lastName },
+    email: email,
+    password: password,
+  };
+
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_BASE_URL}/users/register`,
+      newUser
+    );
+
+    if (response.status === 201 || response.status === 200) {
+      const data = response.data;
+      setUser(data.user);
+      localStorage.setItem("token", data.token);
+      navigate("/home");
+    }
+  } catch (error) {
+    // Handle registration errors
+    if (error.response?.data?.errors) {
+      error.response.data.errors.forEach((err) => {
+        alert(`${err.path}: ${err.msg}`);
+      });
+    }
+  }
+};
+```
+
+#### 2. User Login Integration
+
+**Frontend (UserLogin.jsx)**
+
+```javascript
+const submitHandler = async (e) => {
+  e.preventDefault();
+  const loginData = { email, password };
+
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_BASE_URL}/users/login`,
+      loginData
+    );
+
+    if (response.status === 200) {
+      const data = response.data;
+      setUser(data.user);
+      localStorage.setItem("token", data.token);
+      navigate("/home");
+    }
+  } catch (error) {
+    // Handle login errors
+    alert(error.response?.data?.message || "Login failed");
+  }
+};
+```
+
+#### 3. Captain Registration Integration
+
+**Frontend (CaptainSignup.jsx)**
+
+```javascript
+const submitHandler = async (e) => {
+  e.preventDefault();
+  const captainData = {
+    fullname: { firstname: firstName, lastname: lastName },
+    email,
+    password,
+    vehicle: {
+      color: vehicleColor,
+      plate: vehiclePlate,
+      capacity: parseInt(vehicleCapacity),
+      vehicleType: vehicleType,
+    },
+  };
+
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_BASE_URL}/captains/register`,
+      captainData
+    );
+
+    if (response.status === 200 || response.status === 201) {
+      const data = response.data;
+      setCaptain(data.captain);
+      localStorage.setItem("token", data.token);
+      navigate("/captain-home");
+    }
+  } catch (error) {
+    // Handle registration errors
+    console.error("Captain registration error:", error.response?.data);
+  }
+};
+```
+
+#### 4. Captain Login Integration
+
+**Frontend (CaptainLogin.jsx)**
+
+```javascript
+const submitHandler = async (e) => {
+  e.preventDefault();
+  const loginData = { email, password };
+
+  try {
+    const response = await axios.post(
+      `${import.meta.env.VITE_BASE_URL}/captains/login`,
+      loginData
+    );
+
+    if (response.status === 200) {
+      const data = response.data;
+      setCaptain(data.captain);
+      localStorage.setItem("token", data.token);
+      navigate("/captain-home");
+    }
+  } catch (error) {
+    // Handle login errors
+    alert(error.response?.data?.message || "Login failed");
+  }
+};
+```
+
+### State Management
+
+#### User Context (UserContext.jsx)
+
+```javascript
+import React, { createContext, useState } from "react";
+
+export const UserDataContext = createContext();
+
+const UserContext = ({ children }) => {
+  const [user, setUser] = useState({
+    email: "",
+    fullName: {
+      firstName: "",
+      lastName: "",
+    },
+  });
+
+  return (
+    <UserDataContext.Provider value={{ user, setUser }}>
+      {children}
+    </UserDataContext.Provider>
+  );
+};
+
+export default UserContext;
+```
+
+#### Captain Context (CaptainContext.jsx)
+
+```javascript
+import React, { createContext, useState } from "react";
+
+export const CaptainDataContext = createContext();
+
+const CaptainContext = ({ children }) => {
+  const [captain, setCaptain] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  return (
+    <CaptainDataContext.Provider
+      value={{
+        captain,
+        setCaptain,
+        isLoading,
+        setIsLoading,
+        error,
+        setError,
+      }}
+    >
+      {children}
+    </CaptainDataContext.Provider>
+  );
+};
+
+export default CaptainContext;
+```
+
+### Authentication & Protected Routes
+
+#### Token-based Authentication
+
+- JWT tokens are stored in `localStorage` after successful login
+- Tokens are sent in request headers for protected routes
+- Automatic logout on token expiration
+
+#### Protected Route Example
+
+```javascript
+// UserProtectedWrapper.jsx
+const UserProtectedWrapper = ({ children }) => {
+  const token = localStorage.getItem("token");
+  const { user } = useContext(UserDataContext);
+
+  if (!token) {
+    return <Navigate to="/login" />;
+  }
+
+  return children;
+};
+```
+
+### Routing Configuration
+
+```javascript
+// App.jsx
+<Routes>
+  <Route path="/" element={<Start />} />
+  <Route path="/login" element={<UserLogin />} />
+  <Route path="/signup" element={<UserSignup />} />
+  <Route path="/captain-login" element={<CaptainLogin />} />
+  <Route path="/captain-signup" element={<CaptainSignup />} />
+  <Route
+    path="/home"
+    element={
+      <UserProtectedWrapper>
+        <Home />
+      </UserProtectedWrapper>
+    }
+  />
+  <Route path="/captain-home" element={<CaptainHome />} />
+  <Route
+    path="/user/logout"
+    element={
+      <UserProtectedWrapper>
+        <UserLogout />
+      </UserProtectedWrapper>
+    }
+  />
+</Routes>
+```
+
+### CORS Configuration
+
+The backend is configured to allow cross-origin requests from the frontend:
+
+```javascript
+// app.js
+app.use(cors());
+```
+
+### Error Handling
+
+#### Frontend Error Handling Strategy
+
+1. **Validation Errors**: Display specific field errors from backend
+2. **Authentication Errors**: Redirect to login page
+3. **Server Errors**: Show user-friendly error messages
+4. **Network Errors**: Handle offline scenarios
+
+#### Common Error Responses
+
+**Validation Error (400)**
+
+```javascript
+{
+  "errors": [
+    {
+      "type": "field",
+      "msg": "invalid email",
+      "path": "email",
+      "location": "body"
+    }
+  ]
+}
+```
+
+**Authentication Error (401)**
+
+```javascript
+{
+  "message": "Unauthorized"
+}
+```
+
+### Development Setup
+
+#### 1. Backend Setup
+
+```bash
+cd backend
+npm install
+npm start
+# Server runs on http://localhost:3000
+```
+
+#### 2. Frontend Setup
+
+```bash
+cd frontend
+npm install
+npm run dev
+# Client runs on http://localhost:5173
+```
+
+#### 3. Database Setup
+
+```bash
+# Make sure MongoDB is running
+mongod
+```
+
+### Testing Integration
+
+#### Test User Registration
+
+```bash
+curl -X POST http://localhost:3000/users/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullname": {
+      "firstname": "John",
+      "lastname": "Doe"
+    },
+    "email": "john@example.com",
+    "password": "password123"
+  }'
+```
+
+#### Test Captain Registration
+
+```bash
+curl -X POST http://localhost:3000/captains/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "fullname": {
+      "firstname": "Jane",
+      "lastname": "Smith"
+    },
+    "email": "jane@example.com",
+    "password": "password123",
+    "vehicle": {
+      "color": "Black",
+      "plate": "ABC123",
+      "capacity": 4,
+      "vehicleType": "car"
+    }
+  }'
+```
+
+### Production Deployment
+
+#### Environment Variables
+
+- Update `VITE_BASE_URL` to production API URL
+- Set secure `JWT_SECRET` for production
+- Configure production MongoDB URI
+
+#### Build Commands
+
+```bash
+# Frontend build
+cd frontend
+npm run build
+
+# Backend production
+cd backend
+npm start
+```
+
+---
+
 ## Future Endpoints (Coming Soon)
 
 - `PUT /users/profile` - Update user profile
